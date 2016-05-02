@@ -13,9 +13,9 @@
 int sfs_read_dir_entry(struct sfs_disk* disk, struct sfs_inode* dir_inode,
         int n, struct sfs_dir_entry* dir)
 {
-        int dir_block_index = 0; // TODO: currently only support using the first data block in an inode
+        int dir_block_index = n >> 3; // TODO: currently only support using the first data block in an inode
         int dir_block = dir_inode->block[dir_block_index];  // FIXME: this should be the actual block ID to read from
-        int dir_offset = n; // FIXME: this should be the byte offset inside the block to read from (based on n)
+        int dir_offset = (n & 7) * SFS_DIR_ENTRY_SIZE; // FIXME: this should be the byte offset inside the block to read from (based on n)
 
         // find the right offsets and read the inum, file name, and file name length from disk
         // remember, if the strlen field in the dir_entry is 0 that means it is unused
@@ -56,7 +56,7 @@ int sfs_create_dir_entry(struct sfs_disk* disk, struct sfs_inode* dir_inode,
                         int dir_block = dir_inode->block[dir_block_index];
                         int dir_offset = n & 7;
 
-                        disk_write(disk->data, dir_block, n, direntry, SFS_DIR_ENTRY_SIZE);
+                        disk_write(disk->data, dir_block, n*SFS_DIR_ENTRY_SIZE, direntry, SFS_DIR_ENTRY_SIZE);
                         return 0;
                 }
         }
@@ -98,6 +98,13 @@ int sfs_find_dir_entry(struct sfs_disk* disk, char* filename, struct sfs_dir_ent
 {
         int n;
         struct sfs_inode* root_dir = &disk->root_dir_inode; // TODO: will need to change this to support nested directories
+
+        for(n = 0; n < 8 * SFS_BLOCKS_PER_INODE; n++){
+                sfs_read_dir_entry(disk, root_dir, n, entry);
+                if(strcmp(entry->name, filename) == 0) return 0;
+        }
+
+        entry = NULL;
 
         /* FIXME: need to read each dir entry from disk and see if it has
          * the same filename. If it does, read all of its data into `entry` and return 0.

@@ -53,10 +53,16 @@ int sfs_open(struct sfs_disk* disk, char* filename, int create_flag)
                  * file name using the `sfs_find_dir_entry` function. That will
                  * tell us what inode number to read so we can fill in `inode`.
                  * If not found, throw error. */
+                struct sfs_dir_entry *dir = malloc(sizeof(struct sfs_dir_entry));
 
-                printf("ERROR: SFS can't open existing files yet!\n");
-                return -1;
-
+                if(sfs_find_dir_entry(disk, filename, dir) == 0) {
+                        int inum = dir->inum;
+                        sfs_write_inode(disk, inum, inode);
+                }
+                else {
+                        printf("ERROR: file could not be found!\n");
+                        return -1;
+                }
         }
         else { // create a new file in the root directory...
                 /* For new files, prepare a new inode for an empty file. */
